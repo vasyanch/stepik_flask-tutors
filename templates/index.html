@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block main_container %}
+  <main class="container mt-3 mb-5">
+    <section>
+      <h1 class="h1 text-center mx-auto mt-4 py-5"><strong>Найдите идеального <br>репетитора английского, <br>занимайтесь онлайн</strong></h1>
+      <div class="text-center mb-5">
+        <div class="btn-group mx-auto mb-0" role="group" aria-label="Basic example">
+          {% for goal_key, goal_value in goals.items() %}
+            <a href="/goals/{{ goal_key }}/" class="btn btn-outline-secondary">{{ goal_value[1] }} {{ goal_value[0] }}</a>
+          {% endfor %}
+        </div>
+    </div>
+    </section>
+    <h2 class="h5 text-center mb-5">Наши преподаватели</h2>
+
+      {% include 'teachers_list.html' %}
+
+    <h2 class="text-center mt-5 mb-3">Не нашли своего репетитора?</h2>
+    <p class="text-center mb-4">Расскажите, кто вам нужен и мы подберем его сами</p>
+    <div class="text-center pb-5">
+        <a href="/request/" class="btn btn-primary">Заказать подбор</a>
+    </div>
+  </main>
+{% endblock %}

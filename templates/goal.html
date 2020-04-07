@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block main_container %}
+
+  <main class="container mt-3">
+    <h1 class="h1 text-center w-50 mx-auto mt-1 py-5 mb-4"><strong>{{ goal[1] }}<br/>Преподаватели <br>  {{ goal[0] }}</strong></h1>
+
+      {% include 'teachers_list.html' %}
+
+    <h2 class="text-center mt-5 mb-3">Не нашли своего репетитора?</h2>
+    <p class="text-center mb-4">Расскажите, кто вам нужен и мы подберем его сами</p>
+    <div class="text-center pb-5">
+        <a href="request.html" class="btn btn-primary">Заказать подбор</a>
+    </div>
+  </main>
+
+{% endblock %}

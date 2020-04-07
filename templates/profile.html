@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block main_container %}
+
+  <main class="container mt-3">
+    <div class="card my-4 mx-auto">
+      <div class="card-body m-2 m-md-4">
+        <article class="row">
+          <div class="col-5"><img src="{{ teacher.picture }}" class="img-fluid" alt=""></div>
+          <div class="col-7">
+            <section class="teacher=info">
+
+              <h1 class="h2">{{ teacher.name }}</h1>
+              <p class="font-weight-bold">
+                {% for goal in teacher.goals %}
+                  <span class="badge badge-success mr-2">{{ goals.get(goal)[0] }}</span>
+                {% endfor %}
+                <span class="mr-2">👍{{ teacher.rating }}</span>
+                <span>{{ teacher.price }}/час</span>
+              </p>
+              <p>{{ teacher.about }}</p>
+            </section>
+          </div>
+          <div class="col-12">
+            <section class="available">
+              <h4 class="mb-4 mt-5 font-weight-bold">Записаться на пробный урок</h4>
+
+              {% for k_day, v_day  in week_days.items() %}
+                <h6 class="mt-4 font-weight-bold">{{ v_day }}</h6>
+                {% if teacher.free.get(k_day).values() | sum  > 0 %}
+                  {% for time, is_free in teacher.free.get(k_day).items() %}
+                    {% if is_free %}
+                      <a href="/booking/{{ teacher.id }}/{{ k_day }}/{{ time }}/" class="btn btn-outline-success mr-2 mb-2">{{ time }} свободно</a>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <p>Нет свободных уроков</p>
+                {% endif %}
+              {% endfor %}
+            </section>
+          </div>
+        </article>
+      </div>
+
+    </div>
+  </main>
+
+{% endblock %}
