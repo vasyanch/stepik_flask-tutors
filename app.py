@@ -1,8 +1,9 @@
 import json
 import re
 
-from flask import Flask, render_template, request, redirect
 from random import randint
+from flask import Flask, render_template, request, redirect
+
 
 phone_template = re.compile(r"(^|\+)\d{11}$")
 
