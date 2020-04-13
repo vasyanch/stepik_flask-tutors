@@ -4,7 +4,7 @@
   <main class="container mt-3">
     <div class="row mt-5">
       <div class="col-10 col-md-6 offset-1 offset-md-3 mb-3">
-        <form action="/booking_done/" class="card mb-3" method="post">
+        <form action="/booking/{{ teacher.id }}/{{ week_day }}/{{ day_time }}/" class="card mb-3" method="post">
           <div class="card-body text-center pt-5">
             <img src="{{ teacher.picture }}" class="mb-3" width="95" alt="">
             <h2 class="h5 card-title mt-2 mb-2">{{ teacher.name }}</h2>
@@ -19,6 +19,9 @@
               <input class="form-control" type="hidden" name="client_teacher" value="{{ teacher.id }}">
             </div>
 
+            {% if error %}
+              <div class="alert alert-danger">{{ error }}</div>
+            {% endif %}
             <label class="mb-1 mt-2" for="clientName">Вас зовут</label>
             <input class="form-control" type="text" name="client_name" id="clientName" placeholder="Ivan">
 
