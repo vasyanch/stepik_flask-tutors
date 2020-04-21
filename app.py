@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask
 from flask import render_template, request
 from flask_migrate import Migrate
@@ -7,8 +9,8 @@ from models import Teacher, Goal, Lesson, WeekDay, RequestLesson, Booking
 from models import db
 
 app = Flask(__name__)
-app.secret_key = "a;skld_;lskd780;lsdkjf=a;dj"
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
+app.secret_key = os.environ.get('STEPIK_TUTORS_SECRET_KEY')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
