@@ -61,4 +61,11 @@ def insert_test_data():
     db.session.commit()
 
 
-insert_test_data()
+revision = 'insetestdata'
+down_revision = '2ed5ceafac4d'
+branch_labels = None
+depends_on = None
+
+
+def upgrade():
+    insert_test_data()
