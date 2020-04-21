@@ -143,6 +143,7 @@ def upgrade():
     sa.ForeignKeyConstraint(['lesson_id'], ['lessons.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    db.session.commit()
     insert_test_data()
     # ### end Alembic commands ###
 
