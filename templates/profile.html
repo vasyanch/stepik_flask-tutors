@@ -13,7 +13,7 @@
               <h1 class="h2">{{ teacher.name }}</h1>
               <p class="font-weight-bold">
                 {% for goal in teacher.goals %}
-                  <span class="badge badge-success mr-2">{{ goals.get(goal)[0] }}</span>
+                  <span class="badge badge-success mr-2">{{ goal.value }}</span>
                 {% endfor %}
                 <span class="mr-2">👍{{ teacher.rating }}</span>
                 <span>{{ teacher.price }}/час</span>
@@ -24,14 +24,11 @@
           <div class="col-12">
             <section class="available">
               <h4 class="mb-4 mt-5 font-weight-bold">Записаться на пробный урок</h4>
-
-              {% for k_day, v_day  in week_days.items() %}
-                <h6 class="mt-4 font-weight-bold">{{ v_day }}</h6>
-                {% if teacher.free.get(k_day).values() | sum  > 0 %}
-                  {% for time, is_free in teacher.free.get(k_day).items() %}
-                    {% if is_free %}
-                      <a href="/booking/{{ teacher.id }}/{{ k_day }}/{{ time }}/" class="btn btn-outline-success mr-2 mb-2">{{ time }} свободно</a>
-                    {% endif %}
+              {% for day in free_times %}
+                <h6 class="mt-4 font-weight-bold">{{ day[1].day_name }}</h6>
+                {% if day[1].free_time %}
+                  {% for time_value in day[1].free_time %}
+                    <a href="/booking/{{ day[1].lesson_id }}/" class="btn btn-outline-success mr-2 mb-2">{{ time_value }} свободно</a>
                   {% endfor %}
                 {% else %}
                   <p>Нет свободных уроков</p>

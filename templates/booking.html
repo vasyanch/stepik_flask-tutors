@@ -4,32 +4,34 @@
   <main class="container mt-3">
     <div class="row mt-5">
       <div class="col-10 col-md-6 offset-1 offset-md-3 mb-3">
-        <form action="/booking/{{ teacher.id }}/{{ week_day }}/{{ day_time }}/" class="card mb-3" method="post">
+        <form action="/booking/{{ lesson_id }}/" class="card mb-3" method="post">
+          {{ form.csrf_token }}
           <div class="card-body text-center pt-5">
             <img src="{{ teacher.picture }}" class="mb-3" width="95" alt="">
             <h2 class="h5 card-title mt-2 mb-2">{{ teacher.name }}</h2>
             <p class="my-1">Запись на пробный урок</p>
-            <p class="my-1">{{ week_days.get(week_day) }}, {{ day_time }}</p>
+            <p class="my-1">{{ week_day }}, {{ day_time }}</p>
           </div>
           <hr />
           <div class="card-body mx-3">
             <div class="row">
-              <input class="form-control" type="hidden" name="client_weekday" value="{{ week_day }}">
-              <input class="form-control" type="hidden" name="client_time" value="{{ day_time }}">
-              <input class="form-control" type="hidden" name="client_teacher" value="{{ teacher.id }}">
+              {{ form.lesson_id(class="form-control") }}
             </div>
 
             {% if error %}
               <div class="alert alert-danger">{{ error }}</div>
             {% endif %}
-            <label class="mb-1 mt-2" for="clientName">Вас зовут</label>
-            <input class="form-control" type="text" name="client_name" id="clientName" placeholder="Ivan">
-
-            <label class="mb-1 mt-2" for="clientPhone">Ваш телефон</label>
-            <input class="form-control" type="tel"  name="client_phone" id="clientPhone" placeholder="+79998887766">
-
-            <input type="submit" class="btn btn-primary btn-block mt-4" value="Записаться на пробный урок">
-
+            {{ form.client_name.label(class="mb-1 mt-2") }}
+            {% for err in form.client_name.errors %}
+              <p class="error">{{ err }}</p>
+            {% endfor %}
+            {{ form.client_name(class="form-control", placeholder="Ivan") }}
+            {{ form.client_phone.label(class="mb-1 mt-2") }}
+            {% for err in form.client_phone.errors %}
+              <p class="alert alert-danger">{{ err }}</p>
+            {% endfor %}
+            {{ form.client_phone(class="form-control", placeholder="+79998887766") }}
+            {{ form.submit(class="btn btn-primary btn-block mt-4") }}
           </div>
         </form>
       </div>

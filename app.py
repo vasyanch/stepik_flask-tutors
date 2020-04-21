@@ -1,181 +1,107 @@
-import json
-import re
+import os
 
-from random import randint
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask
+from flask import render_template, request
+from flask_migrate import Migrate
 
-
-phone_template = re.compile(r"(^|\+)\d{11}$")
+from forms import RequestForm, BookingForm
+from models import Teacher, Goal, Lesson, WeekDay, RequestLesson, Booking
+from models import db
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('STEPIK_TUTORS_SECRET_KEY')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-database = {
-    'main': 'db/goals_teachers.json',
-    'booking': 'db/booking.json',
-    'request': 'db/request.json'
-}
+db.init_app(app)
+migrate = Migrate(app, db)
 
 
+@app.route('/all')
 @app.route('/')
 def render_index():
-    db_main_data = load_db_data(database['main'])
-    teachers = db_main_data.get('teachers')
-    teachers = [teachers[randint(0, len(teachers) - 1)] for i in range(6)]
-    goals = db_main_data.get('goals')
+    if request.path == '/all':
+        teachers = Teacher.query.order_by(Teacher.rating.desc()).all()
+    else:
+        teachers = Teacher.query.order_by(db.func.random()).limit(6).all()
+    goals = Goal.query.order_by(Goal.id).all()
     return render_template('index.html', teachers=teachers, goals=goals)
 
 
-@app.route('/goals/<goal>/')
-def render_goal(goal):
-    db_main_data = load_db_data(database['main'])
-    goal_teachers = list(filter(lambda x: goal in x['goals'], db_main_data.get('teachers')))
-    sorted_goal_teachers = sort_by_key(for_sort=goal_teachers, sort_key='rating', reverse=True)
-    goals = db_main_data.get('goals')
-    return render_template('goal.html', goal=goals.get(goal), teachers=sorted_goal_teachers)
+@app.route('/goals/<goal_id>/')
+def render_goal(goal_id):
+    goal_id = int(goal_id)
+    goal_teachers = Teacher.query.filter(Goal.id == goal_id).order_by(Teacher.rating.desc()).all()
+    goal = Goal.query.get_or_404(goal_id)
+    return render_template('goal.html', goal=goal, teachers=goal_teachers)
 
 
 @app.route('/profiles/<teacher_id>/')
 def render_profile(teacher_id):
-    db_main_data = load_db_data(database['main'])
-    teacher = get_teacher_by_id(teacher_list=db_main_data.get('teachers'), teacher_id=int(teacher_id))
-    week_days = get_week_days()
-    goals = db_main_data.get('goals')
-    return render_template('profile.html', teacher=teacher, week_days=week_days, goals=goals)
+    teacher_id = int(teacher_id)
+    teacher = Teacher.query.get_or_404(teacher_id)
+    free_times = Lesson.query.filter(db.and_(Lesson.teacher_id == teacher_id, Lesson.status == True)).\
+        order_by(Lesson.day_name_id, Lesson.time_id)
+    dict_days_free_times = {
+        day.id: {'day_name': day.day_name, 'free_time': [], 'lesson_id': None}
+        for day in WeekDay.query.order_by(WeekDay.id)
+    }
+    for record in free_times:
+        dict_days_free_times[record.day_name_id]['free_time'].append(record.time.get_str_time())
+        dict_days_free_times[record.day_name_id]['lesson_id'] = record.id
+    list_days_free_times = sorted(list(dict_days_free_times.items()), key=lambda x: x[0])
+    return render_template('profile.html', teacher=teacher, free_times=list_days_free_times)
 
 
 @app.route('/request/', methods=['POST', 'GET'])
 def render_request():
-    error = ''
-    if request.method == 'POST':
-        db_file_request = database['request']
-        db_file_main = database['main']
-        client_name = request.form.get('client_name')
-        client_phone = request.form.get('client_phone')
-        goal = request.form.get('goal')
-        free_time = request.form.get('time')
-        if not validate_username_phone(client_name, client_phone):
-            error = "Invalid or empty name or phone"
-            return render_template('request.html', error=error)
-
-        user_request = {
-            'goal': goal,
-            'free_time': free_time,
-            'client_name': client_name,
-            'client_phone': client_phone
-        }
-        db_requests = load_db_data(db_file_request)
-        db_requests.append(user_request)
-        dump_db_data(file_path=db_file_request, data=db_requests)
-        goals = load_db_data(db_file_main).get('goals')
+    form = RequestForm()
+    goals = Goal.query.order_by(Goal.id)
+    form.goal_id.choices = [(str(goal.id), goal.value) for goal in goals]
+    goals = Goal.query.order_by(Goal.id).all()
+    if request.method == 'POST' and form.validate_on_submit():
+        lesson_request = RequestLesson()
+        form.populate_obj(lesson_request)
+        db.session.add(lesson_request)
+        db.session.commit()
+        client_name = form.client_name.data
+        client_phone = form.client_phone.data
+        goal = list(filter(lambda x: x.id == int(form.goal_id.data), goals))[0].value
+        free_time = form.free_time.data
         free_time = free_time + ' часа в неделю' if free_time == '1-2' else free_time + ' часов в неделю'
-        return redirect(
-            url_for(
-                '.render_request_done', goal=goals.get(goal)[0], free_time=free_time,
-                name=client_name, phone=client_phone
-            )
+        return render_template(
+            'request_done.html', goal=goal, free_time=free_time, name=client_name, phone=client_phone
         )
-    return render_template('request.html', error=error)
+    return render_template('request.html', form=form)
 
 
-@app.route('/request_done/')
-def render_request_done():
-    return render_template(
-        'request_done.html', goal=request.args['goal'], free_time=request.args['free_time'],
-        name=request.args['name'], phone=request.args['phone']
-    )
-
-
-@app.route('/booking/<teacher_id>/<week_day>/<day_time>/', methods=['POST', 'GET'])
-def render_booking(teacher_id, week_day, day_time):
+@app.route('/booking/<lesson_id>/', methods=['POST', 'GET'])
+def render_booking(lesson_id):
     error = ''
-    db_file_booking = database['booking']
-    db_file_main = database['main']
-    db_main_data = load_db_data(db_file_main)
-    all_teachers = db_main_data.get('teachers')
-    main_db_teacher = get_teacher_by_id(teacher_list=all_teachers, teacher_id=int(teacher_id))
-    week_days = get_week_days()
-    if request.method == 'POST':
-        client_name = request.form.get('client_name')
-        client_phone = request.form.get('client_phone')
-        if not validate_username_phone(client_name, client_phone):
-            error = "Invalid or empty name or phone"
-            return render_template(
-                'booking.html', teacher=main_db_teacher, week_day=week_day, day_time=day_time,
-                week_days=week_days, error=error
-            )
-        db_booking = load_db_data(db_file_booking)
-        booking_teacher = get_teacher_by_id(teacher_list=db_booking, teacher_id=teacher_id)
-        if booking_teacher:
-            if not booking_teacher['booking'].get(week_day):
-                booking_teacher['booking'][week_day] = {}
-            booking_teacher['booking'][week_day][day_time] = \
-                {'client_name': client_name, 'client_phone': client_phone}
-        else:
-            db_record = {
-                'id': teacher_id,
-                'booking': {
-                    week_day: {
-                        day_time: {
-                            'client_name': client_name,
-                            'client_phone': client_phone
-                        }
-                    }
-                }
-            }
-            db_booking.append(db_record)
-        main_db_teacher['free'][week_day][day_time] = False
-
-        dump_db_data(file_path=db_file_main, data=db_main_data)
-        dump_db_data(file_path=db_file_booking, data=db_booking)
-        return redirect(
-            url_for(
-                '.render_booking_done', week_day=week_day, time=day_time, client_name=client_name,
-                client_phone=client_phone
-            )
+    form = BookingForm()
+    lesson_id = int(lesson_id)
+    lesson = Lesson.query.get_or_404(lesson_id)
+    week_day = lesson.day_name.day_name
+    _time = lesson.time.get_str_time()
+    teacher = lesson.teacher
+    if not lesson.status:
+        error = f'Извините, у {teacher.name}  в  {week_day.lower()} {_time} нет свободного времени, ' \
+                f'пожалуйста выберите другое время'
+    if request.method == 'POST' and form.validate_on_submit() and error == '':
+        form.lesson_id.data = int(lesson_id)
+        booking = Booking()
+        form.populate_obj(booking)
+        client_name, client_phone = form.client_name.data, form.client_phone.data
+        lesson.status = False
+        db.session.add_all([lesson, booking])
+        db.session.commit()
+        return render_template(
+            'booking_done.html', week_day=week_day, day_time=_time, name=client_name, phone=client_phone
         )
+    form.lesson_id.data = str(lesson_id)
     return render_template(
-        'booking.html', teacher=main_db_teacher, week_day=week_day, day_time=day_time, week_days=week_days, error=error
+        'booking.html', teacher=teacher, lesson_id=lesson_id, week_day=week_day, day_time=_time, error=error, form=form
     )
-
-
-@app.route('/booking_done/')
-def render_booking_done():
-    return render_template(
-        'booking_done.html', weekday=get_week_days()[request.args['week_day']], time=request.args['time'],
-        name=request.args['client_name'], phone=request.args['client_phone']
-    )
-
-
-def sort_by_key(for_sort, sort_key, reverse=False):
-    return sorted(for_sort, key=lambda x: x[sort_key], reverse=reverse)
-
-
-def validate_username_phone(username, phone):
-    if not username or not phone or not re.match(phone_template, phone):
-        return False
-    return True
-
-
-def get_teacher_by_id(teacher_list, teacher_id):
-    answer_list = list(filter(lambda x: x['id'] == teacher_id, teacher_list))
-    return answer_list[0] if answer_list else None
-
-
-def load_db_data(file_path):
-    with open(file_path, 'r', encoding='utf8') as db_file:
-        return json.load(db_file)
-
-
-def dump_db_data(file_path, data):
-    with open(file_path, 'w', encoding='utf8') as db_file:
-        json.dump(data, db_file, indent=4, ensure_ascii=False)
-
-
-def get_week_days():
-    return {
-        'mon': 'Понедельник', 'tue': 'Вторник', 'wed': 'Среда', 'thu': 'Четверг',
-        'fri': 'Пятница', 'sat': 'Суббота', 'sun': 'Воскресенье'
-    }
 
 
 if __name__ == '__main__':
