@@ -57,7 +57,7 @@ class Lesson(db.Model):
     teacher = db.relationship('Teacher', back_populates='lessons')
     day_name_id = db.Column(db.Integer, db.ForeignKey('weekdays.id'), nullable=False)
     day_name = db.relationship('WeekDay', back_populates='lessons')
-    time_id = db.Column(db.Integer, db.ForeignKey('times.id'), nullable=False)
+    time_id = db.Column(db.Integer, db.ForeignKey('day_times_.id'), nullable=False)
     time = db.relationship('Time', back_populates='lessons')
     booking = db.relationship('Booking', uselist=False, back_populates='lesson')
     status = db.Column(db.Boolean, nullable=False)
@@ -71,7 +71,7 @@ class WeekDay(db.Model):
 
 
 class Time(db.Model):
-    __tablename__ = 'times'
+    __tablename__ = 'day_times_'
     id = db.Column(db.Integer, primary_key=True)
     time = db.Column(db.Time, nullable=False, unique=True)
     lessons = db.relationship('Lesson', back_populates='time')
